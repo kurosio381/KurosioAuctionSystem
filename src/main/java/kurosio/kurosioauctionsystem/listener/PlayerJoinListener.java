@@ -39,16 +39,7 @@ public class PlayerJoinListener implements Listener {
 
                     for (ItemStack item : items) {
 
-                        Map<Integer, ItemStack> leftOver =
-                                player.getInventory().addItem(item);
-
-                        for (ItemStack left : leftOver.values()) {
-
-                            player.getWorld().dropItemNaturally(
-                                    player.getLocation(),
-                                    left
-                            );
-                        }
+                        kurosio.kurosioauctionsystem.utils.ItemUtil.giveItemOrStash(player, item);
                     }
 
                     player.sendMessage(ChatUtil.color(

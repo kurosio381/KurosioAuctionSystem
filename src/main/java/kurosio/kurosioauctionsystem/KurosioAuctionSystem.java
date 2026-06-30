@@ -191,17 +191,8 @@ public final class KurosioAuctionSystem extends JavaPlugin {
 
             if (winnerPlayer != null) {
 
-                // アイテム付与
-                Map<Integer, ItemStack> leftOver =
-                        winnerPlayer.getInventory().addItem(auction.getItem());
-
-                for (ItemStack item : leftOver.values()) {
-
-                    winnerPlayer.getWorld().dropItemNaturally(
-                            winnerPlayer.getLocation(),
-                            item
-                    );
-                }
+                // アイテム付与 (ItemStash連携)
+                kurosio.kurosioauctionsystem.utils.ItemUtil.giveItemOrStash(winnerPlayer, auction.getItem());
 
             } else {
 
@@ -214,18 +205,7 @@ public final class KurosioAuctionSystem extends JavaPlugin {
         } else {
 
             if (seller != null) {
-                Map<Integer, ItemStack> leftOver =
-                        seller.getInventory().addItem(
-                                auction.getItem()
-                        );
-
-                for (ItemStack item : leftOver.values()) {
-
-                    seller.getWorld().dropItemNaturally(
-                            seller.getLocation(),
-                            item
-                    );
-                }
+                kurosio.kurosioauctionsystem.utils.ItemUtil.giveItemOrStash(seller, auction.getItem());
 
                 seller.sendMessage(color(
                         ChatUtil.PREFIX +
@@ -421,18 +401,7 @@ public final class KurosioAuctionSystem extends JavaPlugin {
 
         if (seller != null) {
 
-            Map<Integer, ItemStack> leftOver =
-                    seller.getInventory().addItem(
-                            auction.getItem()
-                    );
-
-            for (ItemStack item : leftOver.values()) {
-
-                seller.getWorld().dropItemNaturally(
-                        seller.getLocation(),
-                        item
-                );
-            }
+            kurosio.kurosioauctionsystem.utils.ItemUtil.giveItemOrStash(seller, auction.getItem());
 
             seller.sendMessage(color(
                     ChatUtil.PREFIX +

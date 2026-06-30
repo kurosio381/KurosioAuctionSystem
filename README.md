@@ -64,7 +64,7 @@ https://help.kankocho.jp/knowledge/help023
 ### 動作環境
 
 - Spigot/Paper 1.15.2+
-- Java 11+
+- Java 8+
 - Vault
 - Vault対応経済プラグイン
 ### インストール

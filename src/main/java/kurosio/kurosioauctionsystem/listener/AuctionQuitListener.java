@@ -1,7 +1,5 @@
 package kurosio.kurosioauctionsystem.listener;
 
-import kurosio.kurosioauctionsystem.KurosioAuctionSystem;
-import kurosio.kurosioauctionsystem.data.AuctionData;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;

@@ -4,25 +4,24 @@ import kurosio.kurosioauctionsystem.KurosioAuctionSystem;
 import kurosio.kurosioauctionsystem.data.AuctionData;
 import kurosio.kurosioauctionsystem.manager.AuctionManager;
 import kurosio.kurosioauctionsystem.manager.VaultManager;
+import kurosio.kurosioauctionsystem.util.ChatUtil;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import kurosio.kurosioauctionsystem.util.ChatUtil;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.block.ShulkerBox;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.*;
-
-import net.md_5.bungee.api.chat.TextComponent;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
 
 import static kurosio.kurosioauctionsystem.util.ChatUtil.color;
 

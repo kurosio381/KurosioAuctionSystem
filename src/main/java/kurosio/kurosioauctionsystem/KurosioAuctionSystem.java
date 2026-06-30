@@ -4,25 +4,25 @@ import kurosio.kurosioauctionsystem.command.KACCommand;
 import kurosio.kurosioauctionsystem.command.KACTabCompleter;
 import kurosio.kurosioauctionsystem.data.AuctionData;
 import kurosio.kurosioauctionsystem.listener.AuctionQuitListener;
+import kurosio.kurosioauctionsystem.listener.PlayerJoinListener;
 import kurosio.kurosioauctionsystem.manager.AuctionManager;
+import kurosio.kurosioauctionsystem.manager.HistoryManager;
 import kurosio.kurosioauctionsystem.manager.ReturnManager;
 import kurosio.kurosioauctionsystem.manager.VaultManager;
 import kurosio.kurosioauctionsystem.util.ChatUtil;
-import kurosio.kurosioauctionsystem.manager.HistoryManager;
-import kurosio.kurosioauctionsystem.listener.PlayerJoinListener;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
-import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.block.ShulkerBox;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.meta.BlockStateMeta;
+
 import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
@@ -528,6 +528,13 @@ public final class KurosioAuctionSystem extends JavaPlugin {
                     auction.isAutoBidEnabled()
             );
 
+            if (auction.getExcludedPlayer() != null) {
+                dataConfig.set(
+                        path + ".excluded-player",
+                        auction.getExcludedPlayer().toString()
+                );
+            }
+
             dataConfig.set(
                     path + ".active",
                     auction.isActive()
@@ -597,6 +604,14 @@ public final class KurosioAuctionSystem extends JavaPlugin {
             auction.setLastBidTime(
                     dataConfig.getLong(path + ".last-bid-time")
             );
+
+            if (dataConfig.contains(path + ".excluded-player")) {
+                auction.setExcludedPlayer(
+                        UUID.fromString(
+                                dataConfig.getString(path + ".excluded-player")
+                        )
+                );
+            }
 
             auction.setAutoBidEnabled(
                     dataConfig.getBoolean(path + ".auto-bid-enabled", false)

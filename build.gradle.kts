@@ -1,6 +1,6 @@
 plugins {
-    java
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("java-library")
+    id("com.gradleup.shadow") version "8.3.0"
 }
 
 group = "kurosio"
@@ -8,36 +8,35 @@ version = "1.9.3"
 
 repositories {
     mavenCentral()
-    maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") {
-        name = "spigot-repo"
+    maven {
+        name = "papermc-repo"
+        url = uri("https://repo.papermc.io/repository/maven-public/")
     }
-    maven("https://jitpack.io") {
-        name = "jitpack.io"
+    maven {
+        name = "jitpack-repo"
+        url = uri("https://jitpack.io")
     }
-    maven("https://repo.azisaba.net/repository/maven-public/") {
+    maven {
         name = "azisaba-repo"
+        url = uri("https://repo.azisaba.net/repository/maven-releases/")
     }
 }
 
 dependencies {
-    compileOnly("org.spigotmc:spigot-api:1.15.2-R0.1-SNAPSHOT")
+    compileOnly("com.destroystokyo.paper:paper-api:1.15.2-R0.1-SNAPSHOT")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7")
     compileOnly("net.azisaba:ItemStash:2.2.3")
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    toolchain.languageVersion = JavaLanguageVersion.of(8)
 }
 
 tasks {
-    compileJava {
-        options.encoding = "UTF-8"
-    }
-    
     processResources {
+        val props = mapOf("version" to version, "description" to project.description)
         filesMatching("plugin.yml") {
-            expand("version" to project.version)
+            expand(props)
         }
     }
 }

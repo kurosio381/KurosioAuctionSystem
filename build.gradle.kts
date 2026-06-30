@@ -14,11 +14,15 @@ repositories {
     maven("https://jitpack.io") {
         name = "jitpack.io"
     }
+    maven("https://repo.azisaba.net/repository/maven-public/") {
+        name = "azisaba-repo"
+    }
 }
 
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.15.2-R0.1-SNAPSHOT")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7")
+    compileOnly("net.azisaba:ItemStash:2.2.3")
 }
 
 java {

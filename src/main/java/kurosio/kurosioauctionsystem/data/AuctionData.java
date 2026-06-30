@@ -113,6 +113,10 @@ public class AuctionData {
         return startTime;
     }
 
+    public void setStartTime(long startTime) {
+        this.startTime = startTime;
+    }
+
     public String getMythicItemId() {
         return mythicItemId;
     }

@@ -22,8 +22,7 @@ public class ItemUtil {
                     e.printStackTrace();
                 }
             }
-            
-            // ItemStashがないか、エラーが起きた場合はドロップする
+
             player.getWorld().dropItemNaturally(player.getLocation(), left);
             player.sendMessage("§cインベントリがいっぱいのため、アイテムが足元にドロップしました。");
         }

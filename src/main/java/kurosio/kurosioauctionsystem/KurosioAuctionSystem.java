@@ -129,6 +129,16 @@ public final class KurosioAuctionSystem extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (getConfig().getBoolean("cancel-on-restart", false)) {
+            for (AuctionData auction : new java.util.ArrayList<>(auctionManager.getAuctions())) {
+                if (auction.isActive()) {
+                    cancelAuction(
+                            auction,
+                            "サーバー再起動のため"
+                    );
+                }
+            }
+        }
         saveAuctions();
     }
 

@@ -115,6 +115,10 @@ public class KACCommand implements CommandExecutor {
                         player.sendMessage("入札単位が不正です");
                         return true;
                     }
+                    if (bidUnit <= 0) {
+                        player.sendMessage("入札単位は1円以上にしてください");
+                        return true;
+                    }
 
                 } else if (option.startsWith("r:")) {
 
@@ -947,28 +951,6 @@ public class KACCommand implements CommandExecutor {
             UUID uuid = entry.getKey();
 
             if (!auctionId.equals(manager.getJoinedAuction(uuid))) {
-                continue;
-            }
-
-            // =========================
-            // 所持金チェック
-            // =========================
-            double balance = VaultManager.getEconomy()
-                    .getBalance(Bukkit.getOfflinePlayer(uuid));
-
-            if (balance < entry.getValue()) {
-
-                manager.removeAutoBid(uuid);
-
-                Player online = Bukkit.getPlayer(uuid);
-
-                if (online != null) {
-                    online.sendMessage(color(
-                            ChatUtil.PREFIX +
-                                    "&e所持金不足のため自動入札を解除しました。"
-                    ));
-                }
-
                 continue;
             }
 

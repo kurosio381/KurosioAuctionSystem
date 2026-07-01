@@ -1,1 +1,3 @@
 last-auction-id: 0
+cancel-on-logout: false
+cancel-on-restart: false

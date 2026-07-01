@@ -538,10 +538,14 @@ public final class KurosioAuctionSystem extends JavaPlugin {
                     auction.isAutoBidEnabled()
             );
 
-            if (auction.getExcludedPlayer() != null) {
+            if (!auction.getExcludedPlayers().isEmpty()) {
+                java.util.List<String> uuidStrings = new java.util.ArrayList<>();
+                for (UUID u : auction.getExcludedPlayers()) {
+                    uuidStrings.add(u.toString());
+                }
                 dataConfig.set(
-                        path + ".excluded-player",
-                        auction.getExcludedPlayer().toString()
+                        path + ".excluded-players",
+                        uuidStrings
                 );
             }
 
@@ -615,12 +619,16 @@ public final class KurosioAuctionSystem extends JavaPlugin {
                     dataConfig.getLong(path + ".last-bid-time")
             );
 
-            if (dataConfig.contains(path + ".excluded-player")) {
-                auction.setExcludedPlayer(
-                        UUID.fromString(
-                                dataConfig.getString(path + ".excluded-player")
-                        )
-                );
+            if (dataConfig.contains(path + ".excluded-players")) {
+                java.util.Set<UUID> uuids = new java.util.HashSet<>();
+                for (String s : dataConfig.getStringList(path + ".excluded-players")) {
+                    uuids.add(UUID.fromString(s));
+                }
+                auction.setExcludedPlayers(uuids);
+            } else if (dataConfig.contains(path + ".excluded-player")) {
+                java.util.Set<UUID> uuids = new java.util.HashSet<>();
+                uuids.add(UUID.fromString(dataConfig.getString(path + ".excluded-player")));
+                auction.setExcludedPlayers(uuids);
             }
 
             auction.setAutoBidEnabled(

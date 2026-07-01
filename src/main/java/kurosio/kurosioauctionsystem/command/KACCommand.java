@@ -86,7 +86,7 @@ public class KACCommand implements CommandExecutor {
             long bidUnit = 1000;
             double radius = 30;
             boolean autoBidEnabled = false;
-            UUID excludedPlayer = null;
+            java.util.Set<UUID> excludedPlayers = new java.util.HashSet<>();
 
             // =====================
             // 開始価格
@@ -154,16 +154,19 @@ public class KACCommand implements CommandExecutor {
 
                 } else if (option.startsWith("exp:")) {
 
-                    String name = option.substring(4);
+                    String namesStr = option.substring(4);
+                    String[] names = namesStr.split(",");
+                    
+                    for (String name : names) {
+                        Player target = Bukkit.getPlayerExact(name);
 
-                    Player target = Bukkit.getPlayerExact(name);
+                        if (target == null) {
+                            player.sendMessage("プレイヤーが見つかりません: " + name);
+                            return true;
+                        }
 
-                    if (target == null) {
-                        player.sendMessage("プレイヤーが見つかりません。");
-                        return true;
+                        excludedPlayers.add(target.getUniqueId());
                     }
-
-                    excludedPlayer = target.getUniqueId();
 
                 } else {
 
@@ -209,7 +212,7 @@ public class KACCommand implements CommandExecutor {
             );
 
             auction.setAutoBidEnabled(autoBidEnabled);
-            auction.setExcludedPlayer(excludedPlayer);
+            auction.setExcludedPlayers(excludedPlayers);
 
             manager.addAuction(auction);
             manager.registerSeller(
@@ -432,8 +435,7 @@ public class KACCommand implements CommandExecutor {
                 return true;
             }
 
-            if (auction.getExcludedPlayer() != null
-                    && auction.getExcludedPlayer().equals(player.getUniqueId())) {
+            if (auction.getExcludedPlayers().contains(player.getUniqueId())) {
 
                 player.sendMessage(color(
                         ChatUtil.PREFIX +
@@ -649,8 +651,7 @@ public class KACCommand implements CommandExecutor {
                 return true;
             }
 
-            if (auction.getExcludedPlayer() != null
-                    && auction.getExcludedPlayer().equals(player.getUniqueId())) {
+            if (auction.getExcludedPlayers().contains(player.getUniqueId())) {
 
                 player.sendMessage(color(
                         ChatUtil.PREFIX +
@@ -766,8 +767,7 @@ public class KACCommand implements CommandExecutor {
                 return true;
             }
 
-            if (auction.getExcludedPlayer() != null
-                    && auction.getExcludedPlayer().equals(player.getUniqueId())) {
+            if (auction.getExcludedPlayers().contains(player.getUniqueId())) {
 
                 player.sendMessage(color(
                         ChatUtil.PREFIX +

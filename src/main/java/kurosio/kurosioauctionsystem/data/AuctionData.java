@@ -2,6 +2,8 @@ package kurosio.kurosioauctionsystem.data;
 
 import org.bukkit.inventory.ItemStack;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public class AuctionData {
@@ -151,14 +153,14 @@ public class AuctionData {
         this.autoBidEnabled = autoBidEnabled;
     }
 
-    private UUID excludedPlayer;
+    private Set<UUID> excludedPlayers = new HashSet<>();
 
-    public UUID getExcludedPlayer() {
-        return excludedPlayer;
+    public Set<UUID> getExcludedPlayers() {
+        return excludedPlayers;
     }
 
-    public void setExcludedPlayer(UUID excludedPlayer) {
-        this.excludedPlayer = excludedPlayer;
+    public void setExcludedPlayers(Set<UUID> excludedPlayers) {
+        this.excludedPlayers = excludedPlayers;
     }
 
 }

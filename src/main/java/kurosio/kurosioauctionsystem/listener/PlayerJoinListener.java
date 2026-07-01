@@ -11,7 +11,6 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.List;
-import java.util.Map;
 
 public class PlayerJoinListener implements Listener {
 
@@ -39,16 +38,7 @@ public class PlayerJoinListener implements Listener {
 
                     for (ItemStack item : items) {
 
-                        Map<Integer, ItemStack> leftOver =
-                                player.getInventory().addItem(item);
-
-                        for (ItemStack left : leftOver.values()) {
-
-                            player.getWorld().dropItemNaturally(
-                                    player.getLocation(),
-                                    left
-                            );
-                        }
+                        kurosio.kurosioauctionsystem.utils.ItemUtil.giveItemOrStash(player, item);
                     }
 
                     player.sendMessage(ChatUtil.color(

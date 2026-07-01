@@ -4,25 +4,24 @@ import kurosio.kurosioauctionsystem.KurosioAuctionSystem;
 import kurosio.kurosioauctionsystem.data.AuctionData;
 import kurosio.kurosioauctionsystem.manager.AuctionManager;
 import kurosio.kurosioauctionsystem.manager.VaultManager;
+import kurosio.kurosioauctionsystem.util.ChatUtil;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import kurosio.kurosioauctionsystem.util.ChatUtil;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.block.ShulkerBox;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.*;
-
-import net.md_5.bungee.api.chat.TextComponent;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
 
 import static kurosio.kurosioauctionsystem.util.ChatUtil.color;
 
@@ -87,7 +86,7 @@ public class KACCommand implements CommandExecutor {
             long bidUnit = 1000;
             double radius = 30;
             boolean autoBidEnabled = false;
-            UUID excludedPlayer = null;
+            java.util.Set<UUID> excludedPlayers = new java.util.HashSet<>();
 
             // =====================
             // 開始価格
@@ -114,6 +113,10 @@ public class KACCommand implements CommandExecutor {
                         bidUnit = Long.parseLong(option.substring(2));
                     } catch (NumberFormatException e) {
                         player.sendMessage("入札単位が不正です");
+                        return true;
+                    }
+                    if (bidUnit <= 0) {
+                        player.sendMessage("入札単位は1円以上にしてください");
                         return true;
                     }
 
@@ -151,16 +154,19 @@ public class KACCommand implements CommandExecutor {
 
                 } else if (option.startsWith("exp:")) {
 
-                    String name = option.substring(4);
+                    String namesStr = option.substring(4);
+                    String[] names = namesStr.split(",");
+                    
+                    for (String name : names) {
+                        Player target = Bukkit.getPlayerExact(name);
 
-                    Player target = Bukkit.getPlayerExact(name);
+                        if (target == null) {
+                            player.sendMessage("プレイヤーが見つかりません: " + name);
+                            return true;
+                        }
 
-                    if (target == null) {
-                        player.sendMessage("プレイヤーが見つかりません。");
-                        return true;
+                        excludedPlayers.add(target.getUniqueId());
                     }
-
-                    excludedPlayer = target.getUniqueId();
 
                 } else {
 
@@ -206,7 +212,7 @@ public class KACCommand implements CommandExecutor {
             );
 
             auction.setAutoBidEnabled(autoBidEnabled);
-            auction.setExcludedPlayer(excludedPlayer);
+            auction.setExcludedPlayers(excludedPlayers);
 
             manager.addAuction(auction);
             manager.registerSeller(
@@ -429,8 +435,7 @@ public class KACCommand implements CommandExecutor {
                 return true;
             }
 
-            if (auction.getExcludedPlayer() != null
-                    && auction.getExcludedPlayer().equals(player.getUniqueId())) {
+            if (auction.getExcludedPlayers().contains(player.getUniqueId())) {
 
                 player.sendMessage(color(
                         ChatUtil.PREFIX +
@@ -564,12 +569,20 @@ public class KACCommand implements CommandExecutor {
                 ));
             }
 
-            double money = VaultManager.getEconomy().getBalance(player);
+            net.milkbowl.vault.economy.EconomyResponse response = VaultManager.getEconomy().withdrawPlayer(player, newPrice);
 
-            if (money < newPrice) {
-                player.sendMessage("お金が足りません");
+            if (!response.transactionSuccess()) {
+                player.sendMessage(color(ChatUtil.PREFIX + "&cお金が足りません。"));
                 return true;
             } else {
+
+                // 返金処理
+                if (auction.getHighestBidder() != null) {
+                    VaultManager.getEconomy().depositPlayer(
+                            org.bukkit.Bukkit.getOfflinePlayer(auction.getHighestBidder()),
+                            auction.getCurrentPrice()
+                    );
+                }
 
                 // 普通の入札
                 auction.setCurrentPrice(newPrice);
@@ -638,8 +651,7 @@ public class KACCommand implements CommandExecutor {
                 return true;
             }
 
-            if (auction.getExcludedPlayer() != null
-                    && auction.getExcludedPlayer().equals(player.getUniqueId())) {
+            if (auction.getExcludedPlayers().contains(player.getUniqueId())) {
 
                 player.sendMessage(color(
                         ChatUtil.PREFIX +
@@ -708,6 +720,12 @@ public class KACCommand implements CommandExecutor {
                 return true;
             }
 
+            double money = VaultManager.getEconomy().getBalance(player);
+            if (money < limit) {
+                player.sendMessage(color(ChatUtil.PREFIX + "&c自動入札上限額は現在の所持金(&6" + String.format("%,d", (long)money) + "円&c)を超えて設定できません。"));
+                return true;
+            }
+
 
 
             AuctionManager manager = KurosioAuctionSystem.getInstance().getAuctionManager();
@@ -749,8 +767,7 @@ public class KACCommand implements CommandExecutor {
                 return true;
             }
 
-            if (auction.getExcludedPlayer() != null
-                    && auction.getExcludedPlayer().equals(player.getUniqueId())) {
+            if (auction.getExcludedPlayers().contains(player.getUniqueId())) {
 
                 player.sendMessage(color(
                         ChatUtil.PREFIX +
@@ -803,17 +820,7 @@ public class KACCommand implements CommandExecutor {
                 return true;
             }
 
-            double money = VaultManager.getEconomy().getBalance(player);
 
-            if (limit > money) {
-
-                player.sendMessage(color(
-                        ChatUtil.PREFIX +
-                                "&c所持金を超える自動入札上限は設定できません。"
-                ));
-
-                return true;
-            }
 
             manager.setAutoBid(
                     player.getUniqueId(),
@@ -947,28 +954,6 @@ public class KACCommand implements CommandExecutor {
                 continue;
             }
 
-            // =========================
-            // 所持金チェック
-            // =========================
-            double balance = VaultManager.getEconomy()
-                    .getBalance(Bukkit.getOfflinePlayer(uuid));
-
-            if (balance < entry.getValue()) {
-
-                manager.removeAutoBid(uuid);
-
-                Player online = Bukkit.getPlayer(uuid);
-
-                if (online != null) {
-                    online.sendMessage(color(
-                            ChatUtil.PREFIX +
-                                    "&e所持金不足のため自動入札を解除しました。"
-                    ));
-                }
-
-                continue;
-            }
-
             limits.put(uuid, entry.getValue());
         }
 
@@ -981,9 +966,16 @@ public class KACCommand implements CommandExecutor {
 
             if (auction.getHighestBidder() == null) {
 
-                auction.setCurrentPrice(
-                        auction.getStartPrice()
-                );
+                long newPrice = auction.getStartPrice();
+                net.milkbowl.vault.economy.EconomyResponse response = VaultManager.getEconomy().withdrawPlayer(
+                        org.bukkit.Bukkit.getOfflinePlayer(only), newPrice);
+                
+                if (!response.transactionSuccess()) {
+                    manager.removeAutoBid(only);
+                    return processAutoBids(manager, auction);
+                }
+
+                auction.setCurrentPrice(newPrice);
 
                 auction.setHighestBidder(only);
 
@@ -1064,6 +1056,29 @@ public class KACCommand implements CommandExecutor {
 
         if (newPrice <= currentPrice) {
             return false;
+        }
+
+        double currentEscrow = 0;
+        if (auction.getHighestBidder() != null && auction.getHighestBidder().equals(topUser)) {
+            currentEscrow = auction.getCurrentPrice();
+        }
+
+        long requiredAmount = newPrice - (long)currentEscrow;
+
+        if (requiredAmount > 0) {
+            net.milkbowl.vault.economy.EconomyResponse response = VaultManager.getEconomy().withdrawPlayer(
+                    org.bukkit.Bukkit.getOfflinePlayer(topUser), requiredAmount);
+            if (!response.transactionSuccess()) {
+                manager.removeAutoBid(topUser);
+                return processAutoBids(manager, auction);
+            }
+        }
+
+        if (auction.getHighestBidder() != null && !auction.getHighestBidder().equals(topUser)) {
+            VaultManager.getEconomy().depositPlayer(
+                    org.bukkit.Bukkit.getOfflinePlayer(auction.getHighestBidder()),
+                    auction.getCurrentPrice()
+            );
         }
 
         UUID priceOwner = topUser;

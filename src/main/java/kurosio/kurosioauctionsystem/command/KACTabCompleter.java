@@ -68,14 +68,23 @@ public class KACTabCompleter implements TabCompleter {
             }
 
             if (current.toLowerCase().startsWith("exp:")) {
+                String fullPrefix = current.substring(4);
+                int lastComma = fullPrefix.lastIndexOf(',');
 
-                String prefix = current.length() > 4
-                        ? current.substring(4).toLowerCase()
-                        : "";
+                String base = "";
+                String namePrefix = fullPrefix;
+
+                if (lastComma != -1) {
+                    base = fullPrefix.substring(0, lastComma + 1);
+                    namePrefix = fullPrefix.substring(lastComma + 1);
+                }
+
+                String finalBase = base;
+                String lowerNamePrefix = namePrefix.toLowerCase();
 
                 Bukkit.getOnlinePlayers().forEach(player -> {
-                    if (player.getName().toLowerCase().startsWith(prefix)) {
-                        list.add("exp:" + player.getName());
+                    if (player.getName().toLowerCase().startsWith(lowerNamePrefix)) {
+                        list.add("exp:" + finalBase + player.getName());
                     }
                 });
 

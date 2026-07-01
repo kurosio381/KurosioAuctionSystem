@@ -4,28 +4,27 @@ import kurosio.kurosioauctionsystem.command.KACCommand;
 import kurosio.kurosioauctionsystem.command.KACTabCompleter;
 import kurosio.kurosioauctionsystem.data.AuctionData;
 import kurosio.kurosioauctionsystem.listener.AuctionQuitListener;
+import kurosio.kurosioauctionsystem.listener.PlayerJoinListener;
 import kurosio.kurosioauctionsystem.manager.AuctionManager;
+import kurosio.kurosioauctionsystem.manager.HistoryManager;
 import kurosio.kurosioauctionsystem.manager.ReturnManager;
 import kurosio.kurosioauctionsystem.manager.VaultManager;
 import kurosio.kurosioauctionsystem.util.ChatUtil;
-import kurosio.kurosioauctionsystem.manager.HistoryManager;
-import kurosio.kurosioauctionsystem.listener.PlayerJoinListener;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
-import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.block.ShulkerBox;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.meta.BlockStateMeta;
+
 import java.io.File;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -130,6 +129,16 @@ public final class KurosioAuctionSystem extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (getConfig().getBoolean("cancel-on-restart", false)) {
+            for (AuctionData auction : new java.util.ArrayList<>(auctionManager.getAuctions())) {
+                if (auction.isActive()) {
+                    cancelAuction(
+                            auction,
+                            "サーバー再起動のため"
+                    );
+                }
+            }
+        }
         saveAuctions();
     }
 
@@ -171,111 +180,43 @@ public final class KurosioAuctionSystem extends JavaPlugin {
         // =========================
         if (winner != null) {
 
+            // 出品者へ入金（落札者からは入札時に徴収済み）
+            VaultManager.getEconomy().depositPlayer(
+                    Bukkit.getOfflinePlayer(
+                            auction.getSellerUUID()
+                    ),
+                    auction.getCurrentPrice()
+            );
+
+            if (seller != null) {
+                seller.sendMessage(color(
+                        ChatUtil.PREFIX +
+                                "&a売上として &6&l" +
+                                String.format("%,d", auction.getCurrentPrice()) +
+                                "円&a受け取りました。"
+                ));
+            }
+
             Player winnerPlayer = Bukkit.getPlayer(winner);
 
             if (winnerPlayer != null) {
 
-                // =========================
-// 所持金チェック
-// =========================
-                double balance =
-                        VaultManager.getEconomy()
-                                .getBalance(winnerPlayer);
-
-                if (balance < auction.getCurrentPrice()) {
-
-                    cancelAuction(
-                            auction,
-                            "落札者の所持金不足のため"
-                    );
-
-                    return;
-                }
-
-// =========================
-// 徴収
-// =========================
-                EconomyResponse response =
-                        VaultManager.getEconomy()
-                                .withdrawPlayer(
-                                        winnerPlayer,
-                                        auction.getCurrentPrice()
-                                );
-
-                if (!response.transactionSuccess()) {
-
-                    cancelAuction(
-                            auction,
-                            "落札処理に失敗したため"
-                    );
-
-                    return;
-                }
-
-// =========================
-// アイテム付与
-// =========================
-                Map<Integer, ItemStack> leftOver =
-                        winnerPlayer.getInventory().addItem(
-                                auction.getItem()
-                        );
-
-                for (ItemStack item : leftOver.values()) {
-                    winnerPlayer.getWorld().dropItemNaturally(
-                            winnerPlayer.getLocation(),
-                            item
-                    );
-                }
-
-                // 出品者へ入金
-                EconomyResponse depositResponse =
-                        VaultManager.getEconomy().depositPlayer(
-                                Bukkit.getOfflinePlayer(
-                                        auction.getSellerUUID()
-                                ),
-                                auction.getCurrentPrice()
-                        );
-
-                if (!depositResponse.transactionSuccess()) {
-                    getLogger().warning(
-                            "出品者への入金に失敗しました。(ID: " + auction.getAuctionId() + ")"
-                    );
-                }
-
-                if (seller != null) {
-                    seller.sendMessage(color(
-                            ChatUtil.PREFIX +
-                                    "&a売上として &6&l" +
-                                    String.format("%,d", auction.getCurrentPrice()) +
-                                    "円&a受け取りました。"
-                    ));
-                }
+                // アイテム付与 (ItemStash連携)
+                kurosio.kurosioauctionsystem.utils.ItemUtil.giveItemOrStash(winnerPlayer, auction.getItem());
 
 
             } else {
 
-                cancelAuction(
-                        auction,
-                        "落札時に最高入札者がオフラインだったため"
+                // オフラインの勝者にはアイテムを保管
+                returnManager.addReturn(
+                        winner,
+                        auction.getItem()
                 );
-
-                return;
             }
         } else {
 
             if (seller != null) {
-                Map<Integer, ItemStack> leftOver =
-                        seller.getInventory().addItem(
-                                auction.getItem()
-                        );
-
-                for (ItemStack item : leftOver.values()) {
-
-                    seller.getWorld().dropItemNaturally(
-                            seller.getLocation(),
-                            item
-                    );
-                }
+                kurosio.kurosioauctionsystem.utils.ItemUtil.giveItemOrStash(seller, auction.getItem());
 
                 seller.sendMessage(color(
                         ChatUtil.PREFIX +
@@ -455,6 +396,14 @@ public final class KurosioAuctionSystem extends JavaPlugin {
 
         auction.setActive(false);
 
+        // 最高入札者へ返金
+        if (auction.getHighestBidder() != null) {
+            VaultManager.getEconomy().depositPlayer(
+                    Bukkit.getOfflinePlayer(auction.getHighestBidder()),
+                    auction.getCurrentPrice()
+            );
+        }
+
         // 出品者へ返却
         Player seller =
                 Bukkit.getPlayer(
@@ -463,18 +412,7 @@ public final class KurosioAuctionSystem extends JavaPlugin {
 
         if (seller != null) {
 
-            Map<Integer, ItemStack> leftOver =
-                    seller.getInventory().addItem(
-                            auction.getItem()
-                    );
-
-            for (ItemStack item : leftOver.values()) {
-
-                seller.getWorld().dropItemNaturally(
-                        seller.getLocation(),
-                        item
-                );
-            }
+            kurosio.kurosioauctionsystem.utils.ItemUtil.giveItemOrStash(seller, auction.getItem());
 
             seller.sendMessage(color(
                     ChatUtil.PREFIX +
@@ -600,6 +538,17 @@ public final class KurosioAuctionSystem extends JavaPlugin {
                     auction.isAutoBidEnabled()
             );
 
+            if (!auction.getExcludedPlayers().isEmpty()) {
+                java.util.List<String> uuidStrings = new java.util.ArrayList<>();
+                for (UUID u : auction.getExcludedPlayers()) {
+                    uuidStrings.add(u.toString());
+                }
+                dataConfig.set(
+                        path + ".excluded-players",
+                        uuidStrings
+                );
+            }
+
             dataConfig.set(
                     path + ".active",
                     auction.isActive()
@@ -613,6 +562,16 @@ public final class KurosioAuctionSystem extends JavaPlugin {
             dataConfig.set(
                     path + ".last-bid-time",
                     auction.getLastBidTime()
+            );
+
+            dataConfig.set(
+                    path + ".highest-offer-price",
+                    auction.getHighestOfferPrice()
+            );
+
+            dataConfig.set(
+                    path + ".last-auto-bid",
+                    auction.isLastAutoBid()
             );
 
 
@@ -660,8 +619,32 @@ public final class KurosioAuctionSystem extends JavaPlugin {
                     dataConfig.getLong(path + ".last-bid-time")
             );
 
+            if (dataConfig.contains(path + ".excluded-players")) {
+                java.util.Set<UUID> uuids = new java.util.HashSet<>();
+                for (String s : dataConfig.getStringList(path + ".excluded-players")) {
+                    uuids.add(UUID.fromString(s));
+                }
+                auction.setExcludedPlayers(uuids);
+            } else if (dataConfig.contains(path + ".excluded-player")) {
+                java.util.Set<UUID> uuids = new java.util.HashSet<>();
+                uuids.add(UUID.fromString(dataConfig.getString(path + ".excluded-player")));
+                auction.setExcludedPlayers(uuids);
+            }
+
             auction.setAutoBidEnabled(
                     dataConfig.getBoolean(path + ".auto-bid-enabled", false)
+            );
+
+            auction.setStartTime(
+                    dataConfig.getLong(path + ".start-time")
+            );
+
+            auction.setHighestOfferPrice(
+                    dataConfig.getLong(path + ".highest-offer-price")
+            );
+
+            auction.setLastAutoBid(
+                    dataConfig.getBoolean(path + ".last-auto-bid")
             );
 
             String bidder = dataConfig.getString(path + ".highestBidder");
@@ -672,12 +655,39 @@ public final class KurosioAuctionSystem extends JavaPlugin {
                 );
             }
 
-            getHistoryManager().saveHistory(auction);
+            long now = System.currentTimeMillis();
+            boolean wasActive = dataConfig.getBoolean(path + ".active", true);
+            long elapsed = now - auction.getLastBidTime();
+            boolean expired = elapsed >= 35000;
 
-            returnManager.addReturn(
-                    auction.getSellerUUID(),
-                    auction.getItem()
-            );
+            if (wasActive && !expired) {
+                // アクティブオークションを再開
+                auctionManager.addAuction(auction);
+                auctionManager.registerSeller(auction.getSellerUUID(), id);
+                auctionManager.registerJoin(auction.getSellerUUID(), id);
+
+                if (auction.getHighestBidder() != null) {
+                    auctionManager.registerJoin(auction.getHighestBidder(), id);
+                    if (auction.isLastAutoBid()) {
+                        auctionManager.setAutoBid(auction.getHighestBidder(), auction.getHighestOfferPrice());
+                    }
+                }
+            } else if (wasActive && expired) {
+                // ダウン中に終了したオークションは正常に終了させる
+                auctionManager.addAuction(auction);
+                auctionManager.registerSeller(auction.getSellerUUID(), id);
+                auctionManager.registerJoin(auction.getSellerUUID(), id);
+                if (auction.getHighestBidder() != null) {
+                    auctionManager.registerJoin(auction.getHighestBidder(), id);
+                }
+                finishAuction(auction);
+            } else {
+                getHistoryManager().saveHistory(auction);
+                returnManager.addReturn(
+                        auction.getSellerUUID(),
+                        auction.getItem()
+                );
+            }
         }
 
         dataConfig.set("auctions", null);
